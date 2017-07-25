@@ -11,7 +11,7 @@ defmodule HelloHttp2.Mixfile do
   end
 
   def application do
-    [applications: [:logger], mod: HelloHttp2]
+    [applications: [:logger], mod: {HelloHttp2, []}]
   end
 
   defp deps do
