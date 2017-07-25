@@ -27,8 +27,6 @@ defmodule Http2.Connection do
   def recv(conn) do
     case :gen_tcp.recv(conn, 0) do
       {:ok, data} ->
-        Logger.info(inspect(data))
-
         :gen_tcp.send(conn, response(data))
       {:error, :closed} ->
         :ok
