@@ -27,16 +27,25 @@ defmodule Http2.Connection do
   def recv(conn) do
     case :gen_tcp.recv(conn, 0) do
       {:ok, data} ->
-        :gen_tcp.send(conn, response(data))
+        Logger.info "\nReceived #{inspect(data)}"
+
+        r = response(data)
+
+        Logger.info "\nSending back #{inspect(r)}"
+
+        :gen_tcp.send(conn, r)
       {:error, :closed} ->
+        Logger.info "Socker closed"
+
         :ok
     end
   end
 
   # Received connection preface from the client
   # Sending back Settings frame
-  def response(@connection_preface) do
+  def response(@connection_preface <> _rest) do
     # based on https://http2.github.io/http2-spec/#rfc.section.6.5.1
+    Logger.info "Sending back settings frame"
     <<0::24, 4::8, 0::8, 0::1, 0::31>>
   end
 
