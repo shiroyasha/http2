@@ -12,7 +12,6 @@ defmodule Http2 do
     {:ok, supervisor} = Supervisor.start_link(__MODULE__, {port, opts}, name: name)
 
     (1..connections) |> Enum.each(fn index ->
-      Logger.info "Starting connection #{index}"
       Supervisor.start_child(supervisor, [])
     end)
 

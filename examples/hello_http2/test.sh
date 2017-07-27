@@ -8,7 +8,7 @@ mix deps.get
 mix compile
 mix run --no-halt &
 
-sleep 5 # wait for the server to start
+sleep 2 # wait for the server to start
 echo "Waiting for the server to start"
 
-sudo docker run --net="host" -ti summerwind/h2spec --port 8443 -k
+sudo docker run --net="host" -ti summerwind/h2spec --port 8443 -k $1
