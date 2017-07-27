@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-trap 'kill $(jobs -pr)' SIGINT SIGTERM EXIT
+trap 'kill -9 $(jobs -pr)' SIGINT SIGTERM EXIT
 
 cd examples/hello_http2
 
 mix deps.get
 mix compile
-mix run --no-halt &
+mix run --no-halt > ../../log.txt &
 
 sleep 2 # wait for the server to start
 echo "Waiting for the server to start"

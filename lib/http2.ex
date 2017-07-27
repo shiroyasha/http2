@@ -21,6 +21,7 @@ defmodule Http2 do
   def init({port, opts}) do
     {:ok, certfile} = Keyword.fetch(opts, :certfile)
     {:ok, keyfile} = Keyword.fetch(opts, :keyfile)
+
     {:ok, listen_socket} = :gen_tcp.listen(port, [:binary, {:packet, 0}, {:active, false}])
 
     children = [
