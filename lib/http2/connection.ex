@@ -1,59 +1,50 @@
 defmodule Http2.Connection do
-  require Logger
   use GenServer
-
+  require Logger
   alias Http2.Frame
 
+  # Default connection "fast-fail" preamble string as defined by the spec.
   @connection_preface "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
-  def start_link(listen_socket) do
-    GenServer.start_link(__MODULE__, {listen_socket})
+  def start_link(socket) do
+    GenServer.start_link(__MODULE__, {socket}, [])
   end
 
-  def init({listen_socket}) do
-    spawn(fn -> accept(listen_socket) end)
+  def init({socket}) do
+    {:ok, conn} = :gen_tcp.accept(socket)
+    :inet.setopts(conn, active: :once)
 
-    {:ok, {:listen_socket, listen_socket}}
+    state = %{
+      socket: socket,
+      conn: conn
+    }
+
+    {:ok, state}
   end
 
-  def accept(listen_socket) do
-    {:ok, conn} = :gen_tcp.accept(listen_socket)
+  def handle_info({:tcp, _port, data}, state) do
+    Logger.info "===> #{inspect(data)}"
 
-    recv(conn)
+    new_state = consume(data, state)
 
-    # :gen_tcp.close(conn)
+    :inet.setopts(new_state.conn, active: :once)
 
-    accept(listen_socket)
+    {:noreply, new_state}
   end
 
-  def recv(conn) do
-    case :gen_tcp.recv(conn, 0) do
-      {:ok, data} ->
-        Logger.info "===> Received #{inspect(data)}"
-
-        respond(conn, data)
-
-        recv(conn)
-      {:error, :closed} ->
-        Logger.info "Socked closed"
-
-        :ok
-    end
+  def handle_info(other, state) do
+    Logger.info "Unhandled #{inspect(other)}"
   end
 
-  def respond(conn, "") do
-    # do nothing
-  end
-
-  def respond(conn, @connection_preface <> data) do
+  def consume(@connection_preface <> data, state) do
     Logger.info "<=== Sending back ack"
 
-    :gen_tcp.send(conn, Http2.Frame.Settings.ack)
+    :gen_tcp.send(state.conn, Http2.Frame.Settings.ack)
 
-    respond(conn, data)
+    consume(data, state)
   end
 
-  def respond(conn, data) do
+  def consume(data, state) do
     {frame, unprocessed} = Frame.parse(data)
 
     if Frame.frame_type(frame) == :settings do
