@@ -89,9 +89,9 @@ defmodule Http2.Connection do
   end
 
   def consume_frame(frame = %Frame{type: :header}, state) do
-    Logger.info "===> headers: payload #{inspect(frame.payload)}"
-    Logger.info "===> headers: stream_id #{inspect(frame.stream_id)}"
-    Logger.info "===> headers: flags #{inspect(frame.flags)}"
+    header = Http2.Frame.Header.decode(frame)
+
+    Logger.info "#{inspect(header)}"
 
     state
   end

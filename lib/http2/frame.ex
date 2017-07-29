@@ -76,7 +76,7 @@ defmodule Http2.Frame do
     {nil, data}
   end
 
-  def parse(data = << len::24, type::8, flags::8, _r::1, stream_id::31>> <> payload) do
+  def parse(data = << len::24, type::8, flags::bits-size(8), _r::1, stream_id::31>> <> payload) do
     case frame_type(type) do
       {:ok, frame_type} ->
         <<payload :: binary-size(len)>> <> unprocessed = payload
