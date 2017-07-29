@@ -52,19 +52,49 @@ defmodule Http2.Frame do
             stream_id: nil,
             payload: nil
 
-  # returns a parsed frame with payload, and the unprocessed data
-  def parse(header = << len::24, type::8, flags::8, _r::1, stream_id::31>> <> rest) do
-    <<payload :: binary-size(len)>> <> unprocessed = rest
+  #
+  # Frame.parse: Convert raw data into a frame
+  #
+  # returns {nil, data}            if there is no enough data to create a new frame
+  # returns {:error, data}         if there is an issue while parsing a frame
+  # returns {frame, rest_of_data}  if the frame is processed
+  #
+  # rest_of_data is the extra data that is not needed to construct the frame
+  #
 
-    frame = %Http2.Frame{
-      len: len, # in bytes
-      type: type,
-      flags: flags,
-      stream_id: stream_id,
-      payload: payload
-    }
+  def parse(data) when byte_size(data) < 9 do
+    # no enough data to construct the frame header
+    # returning everything as unprocessed data
 
-    {frame, unprocessed}
+    {nil, data}
+  end
+
+  def parse(data = <<len::24, _rest::48>> <> payload) when byte_size(payload) < len do
+    # no enough data to construct a whole frame
+    # return everything as unprocessed data
+
+    {nil, data}
+  end
+
+  def parse(data = << len::24, type::8, flags::8, _r::1, stream_id::31>> <> payload) do
+    case frame_type(type) do
+      {:ok, frame_type} ->
+        <<payload :: binary-size(len)>> <> unprocessed = payload
+
+        frame = %Http2.Frame{
+          len: len,
+          type: frame_type,
+          flags: flags,
+          stream_id: stream_id,
+          payload: payload
+        }
+
+        {frame, unprocessed}
+      {:error, nil} ->
+        # unrecognized frame type
+
+        {:error, data}
+    end
   end
 
   #
@@ -83,18 +113,19 @@ defmodule Http2.Frame do
   # | CONTINUATION  | 0x9  | Section 6.10 |
   # +---------------+------+--------------+
   #
-  def frame_type(frame) do
-    case frame.type do
-      0 -> :data
-      1 -> :header
-      2 -> :priority
-      3 -> :rst_stream
-      4 -> :settings
-      5 -> :push_promise
-      6 -> :ping
-      7 -> :go_away
-      8 -> :window_update
-      9 -> :continuation
+  def frame_type(binary) do
+    case binary do
+      0 -> {:ok, :data}
+      1 -> {:ok, :header}
+      2 -> {:ok, :priority}
+      3 -> {:ok, :rst_stream}
+      4 -> {:ok, :settings}
+      5 -> {:ok, :push_promise}
+      6 -> {:ok, :ping}
+      7 -> {:ok, :go_away}
+      8 -> {:ok, :window_update}
+      9 -> {:ok, :continuation}
+      _ -> {:error, nil}
     end
   end
 

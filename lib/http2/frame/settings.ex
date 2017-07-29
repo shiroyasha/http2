@@ -36,7 +36,7 @@ defmodule Http2.Frame.Settings do
   end
 
   def ack do
-    <<0::24, 4::8, 0::8, 0::1, 0::31>>
+    <<0::24, 4::8, 1::8, 0::1, 0::31>>
   end
 
 end

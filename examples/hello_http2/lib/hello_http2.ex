@@ -9,7 +9,7 @@ defmodule HelloHttp2 do
       8443,
       certfile: certfile,
       keyfile: keyfile,
-      connections: 5
+      connections: 1000
     )
   end
 end
