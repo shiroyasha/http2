@@ -16,15 +16,19 @@ defmodule Http2.Connection do
 
     state = %{
       socket: socket,
-      conn: conn
+      conn: conn,
+      buffer: ""
     }
 
     {:ok, state}
   end
 
-  def handle_info({:tcp, _port, data}, state) do
-    Logger.info "===> #{inspect(data)}"
 
+  # ########################################
+  # Incomming tcp data
+  # ########################################
+
+  def handle_info({:tcp, _port, data}, state) do
     new_state = consume(data, state)
 
     :inet.setopts(new_state.conn, active: :once)
@@ -32,31 +36,76 @@ defmodule Http2.Connection do
     {:noreply, new_state}
   end
 
-  def handle_info(other, state) do
-    Logger.info "Unhandled #{inspect(other)}"
+  def handle_info({:tcp_closed, _port}, state) do
+    Logger.info "==== Closing tcp connection"
+
+    {:stop, :normal, state}
   end
 
-  def consume(@connection_preface <> data, state) do
-    Logger.info "<=== Sending back ack"
 
-    :gen_tcp.send(state.conn, Http2.Frame.Settings.ack)
+  # ########################################
+  # Outgoing tcp data
+  # ########################################
+
+  def respond(data, state) do
+    Logger.info "<=== Sending back #{inspect(data)}"
+
+    :gen_tcp.send(state.conn, data)
+  end
+
+
+  # ########################################
+  # Consuming raw data
+  # ########################################
+
+  def consume(@connection_preface <> data, state) do
+    # empty settings frame
+    respond(<<0::24, 4::8, 0::8, 0::1, 0::31>>, state)
 
     consume(data, state)
   end
 
   def consume(data, state) do
-    {frame, unprocessed} = Frame.parse(data)
+    case Frame.parse(state.buffer <> data) do
+      {nil, unprocessed} ->
+        %{ state | buffer: unprocessed }
 
-    if Frame.frame_type(frame) == :settings do
-      Frame.Settings.parse_settings(frame.payload)
-    else
-      Logger.info "Byte size of the data #{byte_size(data)}"
+      {frame, unprocessed} ->
+        new_state = consume_frame(frame, state)
 
-      Logger.info "Frame: #{Frame.frame_type(frame)}"
-      Logger.info "Frame: #{inspect(frame)}"
-
-      Logger.info "Unprocessed: #{inspect(unprocessed)}"
+        consume(unprocessed, new_state)
     end
+  end
+
+
+  # ########################################
+  # Consuming frames
+  # ########################################
+
+  def consume_frame(frame = %Frame{type: :data}, state) do
+    Logger.info "=====> data #{inspect(frame.payload)}"
+
+    state
+  end
+
+  def consume_frame(frame = %Frame{type: :header}, state) do
+    Logger.info "=====> headers #{inspect(frame.payload)}"
+
+    state
+  end
+
+  def consume_frame(frame = %Frame{type: :settings}, state) do
+    Logger.info "=====> settings #{inspect(frame)}"
+
+    respond(Http2.Frame.Settings.ack, state)
+
+    state
+  end
+
+  def consume_frame(frame, state) do
+    Logger.info "=====> Generic Frame #{inspect(frame)}"
+
+    state
   end
 
 end
