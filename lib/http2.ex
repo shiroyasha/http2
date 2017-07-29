@@ -11,18 +11,24 @@ defmodule Http2 do
 
     {:ok, supervisor} = Supervisor.start_link(__MODULE__, {port, opts}, name: name)
 
-    (1..connections) |> Enum.each(fn index ->
-      Supervisor.start_child(supervisor, [])
-    end)
+    (1..connections) |> Enum.each(fn index -> Supervisor.start_child(supervisor, []) end)
 
     {:ok, supervisor}
   end
 
   def init({port, opts}) do
-    {:ok, certfile} = Keyword.fetch(opts, :certfile)
-    {:ok, keyfile} = Keyword.fetch(opts, :keyfile)
+    # No SSL for now.
+    # {:ok, certfile} = Keyword.fetch(opts, :certfile)
+    # {:ok, keyfile} = Keyword.fetch(opts, :keyfile)
 
-    {:ok, listen_socket} = :gen_tcp.listen(port, [:binary, {:packet, 0}, {:active, false}])
+    # document me :)
+    tcp_options = [
+      :binary,
+      {:packet, 0},
+      {:active, false}
+    ]
+
+    {:ok, listen_socket} = :gen_tcp.listen(port, tcp_options)
 
     children = [
       worker(Http2.Connection, [listen_socket], restart: :transient)
