@@ -83,19 +83,21 @@ defmodule Http2.Connection do
   # ########################################
 
   def consume_frame(frame = %Frame{type: :data}, state) do
-    Logger.info "=====> data #{inspect(frame.payload)}"
+    Logger.info "===> data #{inspect(frame.payload)}"
 
     state
   end
 
   def consume_frame(frame = %Frame{type: :header}, state) do
-    Logger.info "=====> headers #{inspect(frame.payload)}"
+    Logger.info "===> headers: payload #{inspect(frame.payload)}"
+    Logger.info "===> headers: stream_id #{inspect(frame.stream_id)}"
+    Logger.info "===> headers: flags #{inspect(frame.flags)}"
 
     state
   end
 
   def consume_frame(frame = %Frame{type: :settings}, state) do
-    Logger.info "=====> settings #{inspect(frame)}"
+    Logger.info "===> settings #{inspect(frame)}"
 
     respond(Http2.Frame.Settings.ack, state)
 
@@ -103,7 +105,7 @@ defmodule Http2.Connection do
   end
 
   def consume_frame(frame, state) do
-    Logger.info "=====> Generic Frame #{inspect(frame)}"
+    Logger.info "===> Generic Frame #{inspect(frame)}"
 
     state
   end
