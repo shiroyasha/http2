@@ -50,7 +50,7 @@ defmodule Http2.Connection do
   def respond(data, state) do
     Logger.info "<=== Sending back #{inspect(data)}"
 
-    :gen_tcp.send(state.conn, data)
+    :ok = :gen_tcp.send(state.conn, data)
   end
 
 
@@ -84,14 +84,22 @@ defmodule Http2.Connection do
 
   def consume_frame(frame = %Frame{type: :data}, state) do
     Logger.info "===> data #{inspect(frame.payload)}"
+    Logger.info "===> data #{inspect(frame.stream_id)}"
+
+    # close the stream
+    # sending header with END_STREAM and END_HEADERS set
+    response_frame = <<4::24, 1::8, 5::8, 0::1, 1::31, frame.payload::binary>>
+
+    respond(response_frame, state)
 
     state
   end
 
   def consume_frame(frame = %Frame{type: :header}, state) do
-    Logger.info "===> headers: payload #{inspect(frame.payload)}"
-    Logger.info "===> headers: stream_id #{inspect(frame.stream_id)}"
-    Logger.info "===> headers: flags #{inspect(frame.flags)}"
+    header = Http2.Frame.Header.decode(frame)
+    Logger.info inspect(frame)
+
+    Logger.info "#{inspect(header)}"
 
     state
   end
