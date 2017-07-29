@@ -2,6 +2,8 @@ defmodule Http2.Connection do
   require Logger
   use GenServer
 
+  alias Http2.Frame
+
   @connection_preface "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
   def start_link(listen_socket) do
@@ -19,7 +21,7 @@ defmodule Http2.Connection do
 
     recv(conn)
 
-    :gen_tcp.close(conn)
+    # :gen_tcp.close(conn)
 
     accept(listen_socket)
   end
@@ -27,38 +29,43 @@ defmodule Http2.Connection do
   def recv(conn) do
     case :gen_tcp.recv(conn, 0) do
       {:ok, data} ->
-        Logger.info "\nReceived #{inspect(data)}"
+        Logger.info "===> Received #{inspect(data)}"
 
-        r = response(data)
+        respond(conn, data)
 
-        Logger.info "\nSending back #{inspect(r)}"
-
-        :gen_tcp.send(conn, r)
+        recv(conn)
       {:error, :closed} ->
-        Logger.info "Socker closed"
+        Logger.info "Socked closed"
 
         :ok
     end
   end
 
-  # Received connection preface from the client
-  # Sending back Settings frame
-  def response(@connection_preface <> _rest) do
-    # based on https://http2.github.io/http2-spec/#rfc.section.6.5.1
-    Logger.info "Sending back settings frame"
-    <<0::24, 4::8, 0::8, 0::1, 0::31>>
+  def respond(conn, "") do
+    # do nothing
   end
 
-  # Received unknown data from the client
-  # Sending back echo
-  def response(data) do
-    data
+  def respond(conn, @connection_preface <> data) do
+    Logger.info "<=== Sending back ack"
+
+    :gen_tcp.send(conn, Http2.Frame.Settings.ack)
+
+    respond(conn, data)
   end
 
-  def handle_info(thing, state) do
-    Logger.info(inspect(thing))
+  def respond(conn, data) do
+    {frame, unprocessed} = Frame.parse(data)
 
-    {:ok, state}
+    if Frame.frame_type(frame) == :settings do
+      Frame.Settings.parse_settings(frame.payload)
+    else
+      Logger.info "Byte size of the data #{byte_size(data)}"
+
+      Logger.info "Frame: #{Frame.frame_type(frame)}"
+      Logger.info "Frame: #{inspect(frame)}"
+
+      Logger.info "Unprocessed: #{inspect(unprocessed)}"
+    end
   end
 
 end
