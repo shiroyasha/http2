@@ -129,6 +129,26 @@ defmodule Http2.Connection do
     state
   end
 
+  def consume_frame(frame = %Frame{type: :ping}, state) do
+    Logger.info "===> ping #{inspect(frame)}"
+
+    ping = Http2.Frame.Ping.decode(frame)
+
+    unless ping.flags.ack? do
+      response_frame = %Http2.Frame{
+        len: byte_size(ping.data),
+        type: :ping,
+        flags: 1, # ack
+        stream_id: frame.stream_id,
+        payload: ping.data
+      }
+
+      respond(Http2.Frame.serialize(response_frame), state)
+    end
+
+    state
+  end
+
   def consume_frame(frame, state) do
     Logger.info "===> Generic Frame #{inspect(frame)}"
 
