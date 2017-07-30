@@ -11,12 +11,12 @@ defmodule Http2 do
 
     {:ok, supervisor} = Supervisor.start_link(__MODULE__, {port, opts}, name: name)
 
-    (1..connections) |> Enum.each(fn index -> Supervisor.start_child(supervisor, []) end)
+    (1..connections) |> Enum.each(fn _ -> Supervisor.start_child(supervisor, []) end)
 
     {:ok, supervisor}
   end
 
-  def init({port, opts}) do
+  def init({port, _opts}) do
     # No SSL for now.
     # {:ok, certfile} = Keyword.fetch(opts, :certfile)
     # {:ok, keyfile} = Keyword.fetch(opts, :keyfile)
