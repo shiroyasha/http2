@@ -4,7 +4,7 @@ defmodule Http2.Frame.Settings do
   # length    MUST be 6
   # type      MUST be 4
   # stream_id MUST be 0
-  def parse(<<len::24, 4::8, flags::8, 0::1, 0::31>> <> payload) do
+  def parse(<<len::24, 4::8, _flags::8, 0::1, 0::31>> <> payload) do
     if len / 6 == 0 do
       parse_settings(payload)
     else

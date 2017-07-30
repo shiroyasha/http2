@@ -36,6 +36,21 @@ defmodule Http2.Frame.HeaderTest do
       ]
     end
 
+    test "decoding a payload with padding", %{ hpack_table: hpack_table } do
+      # 8 octets of padding
+      paylaod = <<8, 130, 134, 132, 65, 138, 8, 157, 92, 11, 129, 112, 220, 121, 166, 153, 0, 0, 0, 0, 0, 0, 0, 0>>
+      flags   = encode_flags(0, 1, 1, 0) # padded
+      frame   = %Http2.Frame{ type: :header, flags: flags, len: 16, payload: paylaod }
+      header  = Http2.Frame.Header.decode(frame, hpack_table)
+
+      assert header.header_block_fragment == [
+        {":method", "GET"},
+        {":scheme", "http"},
+        {":path", "/"},
+        {":authority", "127.0.0.1:8443"}
+      ]
+    end
+
   end
 
   def encode_flags(priority, padded, end_headers, end_stream) do
