@@ -24,7 +24,8 @@ defmodule Http2 do
     # document me :)
     tcp_options = [
       :binary,
-      {:packet, 0},
+      {:reuseaddr, true},
+      {:packet, :raw},
       {:active, false}
     ]
 

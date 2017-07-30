@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-trap 'kill -9 $(jobs -pr)' SIGINT SIGTERM EXIT
+trap 'kill -15 $(jobs -pr)' SIGINT SIGTERM EXIT
 
 cd examples/hello_http2
 
