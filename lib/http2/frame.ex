@@ -129,4 +129,28 @@ defmodule Http2.Frame do
     end
   end
 
+  def serialize(frame) do
+    type = case frame.type do
+      :data -> 0
+      :header -> 1
+      :priority -> 2
+      :rst_stream -> 3
+      :settings -> 4
+      :push_promise -> 5
+      :ping -> 6
+      :go_away -> 7
+      :window_update -> 8
+      :continuation -> 9
+    end
+
+    <<
+      frame.len::24,
+      type::8,
+      frame.flags::8,
+      0::1,
+      frame.stream_id::31,
+      frame.payload::binary
+    >>
+  end
+
 end
