@@ -11,6 +11,7 @@ h2specGreen:
 	bash h2spec.sh generic/3.1   # data frames
 	bash h2spec.sh generic/3.2   # header frames
 	bash h2spec.sh generic/3.5   # ping frames
+	bash h2spec.sh generic/3.8   # go-away frames
 
 h2spec:
 	bash h2spec.sh $(spec) || (tail -n 1000 log.txt && false)
