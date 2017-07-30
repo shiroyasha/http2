@@ -102,9 +102,21 @@ defmodule Http2.Connection do
 
   def consume_frame(frame = %Frame{type: :header}, state) do
     header = Http2.Frame.Header.decode(frame, state.hpack_table)
-    Logger.info inspect(frame)
 
+    Logger.info inspect(frame)
     Logger.info "#{inspect(header)}"
+
+    p = HPack.encode(header.header_block_fragment, state.hpack_table)
+
+    response_frame = %Http2.Frame{
+      len: byte_size(p),
+      type: :header,
+      flags: 5, # end headers, end_stream
+      stream_id: frame.stream_id,
+      payload: p
+    }
+
+    respond(Http2.Frame.serialize(response_frame), state)
 
     state
   end
