@@ -22,7 +22,8 @@ defmodule Http2.Connection do
       socket: socket,
       conn: conn,
       buffer: "",
-      hpack_table: hpack_table
+      hpack_table: hpack_table,
+      state_name: :handshake
     }
 
     {:ok, state}
@@ -78,7 +79,10 @@ defmodule Http2.Connection do
       {frame, unprocessed} ->
         new_state = consume_frame(frame, state)
 
-        consume(unprocessed, new_state)
+        # stop consuming and shutdown
+        unless new_state.state_name == :shutdown do
+          consume(unprocessed, new_state)
+        end
     end
   end
 
@@ -147,6 +151,14 @@ defmodule Http2.Connection do
     end
 
     state
+  end
+
+  def consume_frame(frame = %Frame{type: :go_away}, state) do
+    Logger.info "===> go_away #{inspect(frame)}"
+
+    :gen_tcp.close(state.socket)
+
+    %{ state | state_name: :shutdown }
   end
 
   def consume_frame(frame, state) do
