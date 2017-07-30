@@ -69,7 +69,7 @@ defmodule Http2.Frame.Header do
   # When set, bit 5 indicates that the Exclusive Flag (E), Stream Dependency, and
   # Weight fields are present; see Section 5.3.
 
-  def decode(frame) do
+  def decode(frame, hpack_table) do
     <<_::1, _::1, priority::1, _::1, padded::1, end_headers::1, _::1, end_stream::1>> = frame.flags
 
     header_block_fragment = if padded == 1 do
@@ -83,7 +83,7 @@ defmodule Http2.Frame.Header do
       end_stream: (end_stream == 1),
       priority: (priority == 1),
       padded: (padded == 1),
-      header_block_fragment: header_block_fragment
+      header_block_fragment: HPack.decode(header_block_fragment, hpack_table)
     }
   end
 
