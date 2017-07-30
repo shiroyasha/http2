@@ -134,6 +134,18 @@ defmodule Http2.Connection do
 
     ping = Http2.Frame.Ping.decode(frame)
 
+    unless ping.flags.ack? do
+      response_frame = %Http2.Frame{
+        len: byte_size(ping.data),
+        type: :ping,
+        flags: 1, # ack
+        stream_id: frame.stream_id,
+        payload: ping.data
+      }
+
+      respond(Http2.Frame.serialize(response_frame), state)
+    end
+
     state
   end
 
