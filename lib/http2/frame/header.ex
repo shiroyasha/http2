@@ -73,7 +73,7 @@ defmodule Http2.Frame.Header do
     <<_::1, _::1, priority::1, _::1, padded::1, end_headers::1, _::1, end_stream::1>> = frame.flags
 
     header_block_fragment = if padded == 1 do
-      raise "Not implemented"
+      remove_payload_padding(frame.payload)
     else
       frame.payload
     end
@@ -85,6 +85,16 @@ defmodule Http2.Frame.Header do
       padded: (padded == 1),
       header_block_fragment: HPack.decode(header_block_fragment, hpack_table)
     }
+  end
+
+  defp remove_payload_padding(frame_payload) do
+    <<pad_length::8>> <> padded_payload = frame_payload
+
+    length_without_padding = byte_size(padded_payload) - pad_length
+
+    <<payload::bytes-size(length_without_padding)>> <> _padding = padded_payload
+
+    payload
   end
 
 end
