@@ -129,6 +129,14 @@ defmodule Http2.Connection do
     state
   end
 
+  def consume_frame(frame = %Frame{type: :ping}, state) do
+    Logger.info "===> ping #{inspect(frame)}"
+
+    ping = Http2.Frame.Ping.decode(frame)
+
+    state
+  end
+
   def consume_frame(frame, state) do
     Logger.info "===> Generic Frame #{inspect(frame)}"
 
