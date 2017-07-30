@@ -9,8 +9,7 @@ start_hello:
 h2specGreen:
 	bash h2spec.sh generic/1     # creating a http2 connection
 	bash h2spec.sh generic/3.1   # data frames
-	bash h2spec.sh generic/3.2/1 # receiving a header
-	bash h2spec.sh generic/3.2/2 # receiving a padded header
+	bash h2spec.sh generic/3.2   # header frames
 
 h2spec:
 	bash h2spec.sh $(spec) || (tail -n 1000 log.txt && false)

@@ -69,25 +69,62 @@ defmodule Http2.Frame.Header do
   # When set, bit 5 indicates that the Exclusive Flag (E), Stream Dependency, and
   # Weight fields are present; see Section 5.3.
 
-  def decode(frame, hpack_table) do
-    <<_::1, _::1, priority::1, _::1, padded::1, end_headers::1, _::1, end_stream::1>> = frame.flags
+  defmodule Flags do
+    defstruct end_headers?: false, end_stream?: false, priority?: false, padded?: false
 
-    header_block_fragment = if padded == 1 do
-      remove_payload_padding(frame.payload)
+    def decode(raw_flags) do
+      <<_::1, _::1, priority::1, _::1, padded::1, end_headers::1, _::1, end_stream::1>> = raw_flags
+
+      %__MODULE__{
+        end_headers?: (end_headers == 1),
+        end_stream?: (end_stream == 1),
+        priority?: (priority == 1),
+        padded?: (padded == 1)
+      }
+    end
+  end
+
+  defmodule Priority do
+    defstruct exclusive?: false, dependency_stream_id: nil, weight: nil
+
+    def decode(priority_payload) do
+      <<exclusive::1, stream_id::31, weight::8>> = priority_payload
+
+      %__MODULE__{
+        exclusive?: (exclusive == 1),
+        dependency_stream_id: stream_id,
+        weight: weight
+      }
+    end
+  end
+
+  defstruct flags: nil, header_block_fragment: nil, priority: nil
+
+  def decode(frame, hpack_table) do
+    flags = Flags.decode(frame.flags)
+
+    payload_without_padding = if flags.padded? do
+      remove_padding(frame.payload)
     else
       frame.payload
     end
 
-    %{
-      end_headers: (end_headers == 1),
-      end_stream: (end_stream == 1),
-      priority: (priority == 1),
-      padded: (padded == 1),
-      header_block_fragment: HPack.decode(header_block_fragment, hpack_table)
+    {payload, priority} = if flags.priority? do
+      <<priority_payload::bits-size(40)>> <> rest = payload_without_padding
+
+      {rest, Priority.decode(priority_payload)}
+    else
+      {payload_without_padding, nil}
+    end
+
+    %__MODULE__{
+      flags: flags,
+      header_block_fragment: HPack.decode(payload, hpack_table),
+      priority: priority
     }
   end
 
-  defp remove_payload_padding(frame_payload) do
+  def remove_padding(frame_payload) do
     <<pad_length::8>> <> padded_payload = frame_payload
 
     length_without_padding = byte_size(padded_payload) - pad_length
