@@ -15,6 +15,6 @@ defmodule Http2.Mixfile do
   end
 
   defp deps do
-    []
+    [{:hpack, "~> 1.0.0"}]
   end
 end

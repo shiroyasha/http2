@@ -6,6 +6,8 @@ defmodule Http2.Connection do
   # Default connection "fast-fail" preamble string as defined by the spec.
   @connection_preface "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
+  @max_hpack_table_size 1000
+
   def start_link(socket) do
     GenServer.start_link(__MODULE__, {socket}, [])
   end
@@ -14,10 +16,13 @@ defmodule Http2.Connection do
     {:ok, conn} = :gen_tcp.accept(socket)
     :inet.setopts(conn, active: :once)
 
+    {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
+
     state = %{
       socket: socket,
       conn: conn,
-      buffer: ""
+      buffer: "",
+      hpack_table: hpack_table
     }
 
     {:ok, state}
@@ -96,7 +101,7 @@ defmodule Http2.Connection do
   end
 
   def consume_frame(frame = %Frame{type: :header}, state) do
-    header = Http2.Frame.Header.decode(frame)
+    header = Http2.Frame.Header.decode(frame, state.hpack_table)
     Logger.info inspect(frame)
 
     Logger.info "#{inspect(header)}"
