@@ -35,11 +35,21 @@ defmodule Http2.Connection do
   # ########################################
 
   def handle_info({:tcp, _port, data}, state) do
-    new_state = consume(data, state)
+    if state.state_name == :shutdown do
+      {:stop, :normal, state}
+    else
+      new_state = consume(data, state)
 
-    :inet.setopts(new_state.conn, active: :once)
+      if new_state.state_name != :shutdown do
+        :inet.setopts(new_state.conn, active: :once)
 
-    {:noreply, new_state}
+        {:noreply, new_state}
+      else
+        Logger.info "==== Shutdown"
+
+        {:stop, :normal, new_state}
+      end
+    end
   end
 
   def handle_info({:tcp_closed, _port}, state) do
@@ -80,7 +90,9 @@ defmodule Http2.Connection do
         new_state = consume_frame(frame, state)
 
         # stop consuming and shutdown
-        unless new_state.state_name == :shutdown do
+        if new_state.state_name == :shutdown do
+          new_state
+        else
           consume(unprocessed, new_state)
         end
     end
@@ -156,7 +168,7 @@ defmodule Http2.Connection do
   def consume_frame(frame = %Frame{type: :go_away}, state) do
     Logger.info "===> go_away #{inspect(frame)}"
 
-    :gen_tcp.close(state.socket)
+    :gen_tcp.close(state.conn)
 
     %{ state | state_name: :shutdown }
   end
