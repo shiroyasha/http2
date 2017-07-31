@@ -8,7 +8,11 @@ start_hello:
 # only passing specs
 h2specGreen:
 	bash h2spec.sh generic/1     # creating a http2 connection
-	bash h2spec.sh generic/3     # handling frames
+	bash h2spec.sh generic/3.1   # data frames
+	bash h2spec.sh generic/3.2   # header frames
+	bash h2spec.sh generic/3.5   # ping frames
+	bash h2spec.sh generic/3.8   # go-away frames
+	bash h2spec.sh generic/3.9   # window update frame
 
 h2spec:
 	bash h2spec.sh $(spec) || (tail -n 1000 log.txt && false)

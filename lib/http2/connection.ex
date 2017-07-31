@@ -42,8 +42,11 @@ defmodule Http2.Connection do
 
       if new_state.state_name != :shutdown do
         :inet.setopts(new_state.conn, active: :once)
+
         {:noreply, new_state}
       else
+        Logger.info "==== Shutdown"
+
         {:stop, :normal, new_state}
       end
     end
@@ -165,7 +168,7 @@ defmodule Http2.Connection do
   def consume_frame(frame = %Frame{type: :go_away}, state) do
     Logger.info "===> go_away #{inspect(frame)}"
 
-    :gen_tcp.close(state.socket)
+    :gen_tcp.close(state.conn)
 
     %{ state | state_name: :shutdown }
   end
