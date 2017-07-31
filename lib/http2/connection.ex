@@ -173,6 +173,16 @@ defmodule Http2.Connection do
     %{ state | state_name: :shutdown }
   end
 
+  def consume_frame(frame = %Frame{type: :continuation}, state) do
+    Logger.info "===> continuation #{inspect(frame)}"
+
+    continuation = Http2.Frame.Continuation.decode(frame, state.hpack_table)
+
+    # do nothing
+
+    state
+  end
+
   def consume_frame(frame, state) do
     Logger.info "===> Generic Frame #{inspect(frame)}"
 
