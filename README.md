@@ -12,3 +12,15 @@ Pure elixir implementation of the Http2 protocol.
 | ###########################                                               |
 -----------------------------------------------------------------------------
 ```
+
+## Parsabe frame types
+
+- [x] Data
+- [x] Header
+- [x] Priority
+- [x] RST Stream
+- [ ] Settings
+- [ ] Push Promise
+- [x] Ping
+- [ ] Go Away
+- [ ] Window Update
