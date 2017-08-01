@@ -78,5 +78,24 @@ defmodule Http2.Frame.Data do
     end
   end
 
+  defstruct flags: nil, data: nil
+
+  def decode(frame) do
+    flags = Flags.decode(frame.flags)
+
+    data = if flags.padded? do
+      << pad_len::8 >> <> rest = frame.payload
+
+      length_without_padding = byte_size(rest) - pad_len
+
+      <<payload::bytes-size(length_without_padding)>> <> _padding = rest
+
+      payload
+    else
+      frame.payload
+    end
+
+    %__MODULE__{ flags: flags, data: data }
+  end
 
 end
