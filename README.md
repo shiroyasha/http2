@@ -20,7 +20,7 @@ Pure elixir implementation of the Http2 protocol.
 - [x] Priority
 - [x] RST Stream
 - [ ] Settings
-- [ ] Push Promise
+- [x] Push Promise
 - [x] Ping
 - [x] Go Away
 - [ ] Window Update
