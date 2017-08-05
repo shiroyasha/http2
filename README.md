@@ -19,7 +19,7 @@ Pure elixir implementation of the Http2 protocol.
 - [x] Header
 - [x] Priority
 - [x] RST Stream
-- [ ] Settings
+- [x] Settings
 - [x] Push Promise
 - [x] Ping
 - [x] Go Away
