@@ -67,4 +67,23 @@ defmodule Http2.Frame.PushPromise do
       }
     end
   end
+
+  defstruct flags: nil
+  #  +---------------+
+  #  |Pad Length? (8)|
+  #  +-+-------------+-----------------------------------------------+
+  #  |R|                  Promised Stream ID (31)                    |
+  #  +-+-----------------------------+-------------------------------+
+  #  |                   Header Block Fragment (*)                 ...
+  #  +---------------------------------------------------------------+
+  #  |                           Padding (*)                       ...
+  #  +---------------------------------------------------------------+
+
+  def decode(frame) do
+    flags = Flags.decode(frame.flags)
+
+    %__MODULE__{
+      flags: flags
+    }
+  end
 end
