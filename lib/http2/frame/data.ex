@@ -74,7 +74,10 @@ defmodule Http2.Frame.Data do
     def decode(raw_flags) do
       << padded::1, _::6, end_stream::1 >> = raw_flags
 
-      %__MODULE__{ end_stream?: (end_stream == 1), padded?: (padded == 1) }
+      %__MODULE__{
+        end_stream?: (end_stream == 1),
+        padded?: (padded == 1)
+      }
     end
   end
 

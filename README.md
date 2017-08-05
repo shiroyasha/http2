@@ -22,5 +22,5 @@ Pure elixir implementation of the Http2 protocol.
 - [ ] Settings
 - [ ] Push Promise
 - [x] Ping
-- [ ] Go Away
+- [x] Go Away
 - [ ] Window Update
