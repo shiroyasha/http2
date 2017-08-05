@@ -68,7 +68,7 @@ defmodule Http2.Frame.PushPromise do
     end
   end
 
-  defstruct flags: nil
+  defstruct flags: nil, promised_stream_id: nil
   #  +---------------+
   #  |Pad Length? (8)|
   #  +-+-------------+-----------------------------------------------+
@@ -82,8 +82,17 @@ defmodule Http2.Frame.PushPromise do
   def decode(frame) do
     flags = Flags.decode(frame.flags)
 
+    data = if flags.padded? do
+      Http2.Frame.remove_padding(frame.payload)
+    else
+      frame.payload
+    end
+
+    <<_::1, promised_stream_id::31>> <> header_block_fragment = data
+
     %__MODULE__{
-      flags: flags
+      flags: flags,
+      promised_stream_id: promised_stream_id
     }
   end
 end

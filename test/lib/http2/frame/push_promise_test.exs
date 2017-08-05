@@ -17,24 +17,27 @@ defmodule Http2.Frame.PushPromiseTest do
   describe ".decode" do
     test "padded payload" do
       flags = <<1::1, 0::7>> # padded
-      payload = ""
+      promised_stream_id = 43
+      payload = <<0::1, promised_stream_id::31>>
 
       frame = %Http2.Frame{
         type: :push_promise,
         flags: flags,
-        payload: payload,
-        len: byte_size(payload)
+        payload: <<3::8>> <> payload <> <<1, 2, 3>>, # 3-octet padding
+        len: byte_size(payload) + 4
       }
 
       push_promise = Http2.Frame.PushPromise.decode(frame)
 
       assert push_promise.flags.padded?
       refute push_promise.flags.end_headers?
+      assert push_promise.promised_stream_id == promised_stream_id
     end
 
     test "non-padded payload" do
       flags = <<0::4, 1::1, 0::3>> # end_headers
-      payload = ""
+      promised_stream_id = 43
+      payload = <<0::1, promised_stream_id::31>>
 
       frame = %Http2.Frame{
         type: :push_promise,
@@ -47,6 +50,7 @@ defmodule Http2.Frame.PushPromiseTest do
 
       refute push_promise.flags.padded?
       assert push_promise.flags.end_headers?
+      assert push_promise.promised_stream_id == promised_stream_id
     end
   end
 end
