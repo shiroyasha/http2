@@ -87,13 +87,7 @@ defmodule Http2.Frame.Data do
     flags = Flags.decode(frame.flags)
 
     data = if flags.padded? do
-      << pad_len::8 >> <> rest = frame.payload
-
-      length_without_padding = byte_size(rest) - pad_len
-
-      <<payload::bytes-size(length_without_padding)>> <> _padding = rest
-
-      payload
+      Http2.Frame.remove_padding(frame.payload)
     else
       frame.payload
     end

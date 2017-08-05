@@ -109,18 +109,6 @@ defmodule Http2.Frame.HeaderTest do
 
   end
 
-  test ".remove_padding" do
-    payload = <<8, 130, 134, 132, 65, 138, 8, 157, 92,
-                11, 129, 112, 220, 121, 166, 153,
-                0, 0, 0, 0, 0, 0, 0, 0>>
-
-    payload_without_padding = Http2.Frame.Header.remove_padding(payload)
-
-    assert payload_without_padding == <<130, 134, 132, 65, 138, 8,
-                                        157, 92, 11, 129, 112, 220,
-                                        121, 166, 153>>
-  end
-
   def encode_flags(priority, padded, end_headers, end_stream) do
     << 0::1, 0::1, priority::1, 0::1, padded::1, end_headers::1, 0::1, end_stream::1>>
   end

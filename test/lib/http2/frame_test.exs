@@ -116,4 +116,13 @@ defmodule Http2.FrameTest do
       assert frame.flags == flags
     end
   end
+
+  describe ".remove_padding" do
+    test "removing padding from a raw frame payload" do
+      payload = <<4::8>> <> "test" <> <<1, 1, 1, 1>> # for octet padding
+
+      assert Http2.Frame.remove_padding(payload)
+    end
+  end
+
 end

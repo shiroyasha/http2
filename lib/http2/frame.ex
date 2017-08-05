@@ -153,4 +153,14 @@ defmodule Http2.Frame do
     >>
   end
 
+  def remove_padding(raw_frame_payload) do
+    << pad_len::8 >> <> rest = raw_frame_payload
+
+    length_without_padding = byte_size(rest) - pad_len
+
+    <<payload::bytes-size(length_without_padding)>> <> _padding = rest
+
+    payload
+  end
+
 end

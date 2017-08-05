@@ -104,7 +104,7 @@ defmodule Http2.Frame.Header do
     flags = Flags.decode(frame.flags)
 
     payload_without_padding = if flags.padded? do
-      remove_padding(frame.payload)
+      Http2.Frame.remove_padding(frame.payload)
     else
       frame.payload
     end
@@ -122,16 +122,6 @@ defmodule Http2.Frame.Header do
       header_block_fragment: HPack.decode(payload, hpack_table),
       priority: priority
     }
-  end
-
-  def remove_padding(frame_payload) do
-    <<pad_length::8>> <> padded_payload = frame_payload
-
-    length_without_padding = byte_size(padded_payload) - pad_length
-
-    <<payload::bytes-size(length_without_padding)>> <> _padding = padded_payload
-
-    payload
   end
 
 end
