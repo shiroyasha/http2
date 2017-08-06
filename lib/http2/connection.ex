@@ -8,23 +8,26 @@ defmodule Http2.Connection do
 
   @max_hpack_table_size 1000
 
-  def start_link(socket) do
-    GenServer.start_link(__MODULE__, {socket}, [])
+  def start_link(handler_module, conn) do
+    GenServer.start_link(__MODULE__, {handler_module, conn}, [])
   end
 
-  def init({socket}) do
-    {:ok, conn} = :gen_tcp.accept(socket)
+  def init({handler_module, conn}) do
     :inet.setopts(conn, active: :once)
 
     {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
 
+    :ok = handler_module.init({})
+
     state = %{
-      socket: socket,
       conn: conn,
       buffer: "",
       hpack_table: hpack_table,
+      handler_module: handler_module,
       state_name: :handshake
     }
+
+    IO.puts "Connection started"
 
     {:ok, state}
   end
@@ -53,6 +56,8 @@ defmodule Http2.Connection do
   end
 
   def handle_info({:tcp_closed, _port}, state) do
+    IO.puts "TCP closed"
+
     Logger.info "==== Closing tcp connection"
 
     {:stop, :normal, state}
@@ -109,9 +114,11 @@ defmodule Http2.Connection do
 
     # close the stream
     # sending header with END_STREAM and END_HEADERS set
-    response_frame = <<4::24, 1::8, 5::8, 0::1, 1::31, frame.payload::binary>>
+    respond(<<4::24, 1::8, 5::8, 0::1, 1::31, frame.payload::binary>>,  state)
 
-    respond(response_frame, state)
+    response_msg = state.handler_module.consume(frame)
+
+    respond(<<byte_size(response_msg)::24, 0::8, 5::8, 0::1, 1::31>> <> response_msg, state)
 
     state
   end
