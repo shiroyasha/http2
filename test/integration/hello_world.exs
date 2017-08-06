@@ -20,6 +20,8 @@ defmodule Http2.Integration.HelloWorldTest do
       handler: Connection
     )
 
+    :timer.sleep(1000)
+
     on_exit fn ->
       Process.exit(server, :kill)
     end
@@ -28,8 +30,6 @@ defmodule Http2.Integration.HelloWorldTest do
   end
 
   test "hello world test", context do
-    :timer.sleep(1000)
-
     {:ok, conn} = :gen_tcp.connect({127,0,0,1}, 8888, [:binary, {:active,false}])
     :timer.sleep(1000)
 
@@ -53,6 +53,22 @@ defmodule Http2.Integration.HelloWorldTest do
     assert payload == expected_headers <> expected_data
 
     :gen_tcp.close(conn)
+  end
+
+  test "hello world test", context do
+    {:ok, conn} = Http2.Client.start_link(host: {127,0,0,1}, port: 8888)
+
+    {:ok, response} = Http2.Client.request(conn, body: "", headers: [
+      ":method": "GET",
+      ":path": "/",
+      ":scheme": "http",
+      "user-agent": "elixir-http2-client/0.0.1"
+    ])
+
+    assert response.headers == [{"content-type": "text/html"}]
+    assert response.body == "Hello World"
+
+    Http2.Client.close(conn)
   end
 
 end
