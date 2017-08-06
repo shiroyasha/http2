@@ -56,7 +56,7 @@ defmodule Http2.Integration.HelloWorldTest do
   end
 
   test "hello world test", context do
-    {:ok, conn} = Http2.Client.start_link(host: {127,0,0,1}, port: 8888)
+    {:ok, conn} = Http2.Client.start_link(host: "localhost", port: 8888)
 
     {:ok, response} = Http2.Client.request(conn, body: "", headers: [
       ":method": "GET",
