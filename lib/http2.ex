@@ -8,18 +8,9 @@ defmodule Http2 do
   def start_link(port, opts) do
     name = Keyword.get(opts, :name, __MODULE__)
     connections = Keyword.get(opts, :connections, @default_connection_count)
+    handler_module = Keyword.get(opts, :handler)
 
     {:ok, supervisor} = Supervisor.start_link(__MODULE__, {port, opts}, name: name)
-
-    (1..connections) |> Enum.each(fn _ -> Supervisor.start_child(supervisor, []) end)
-
-    {:ok, supervisor}
-  end
-
-  def init({port, _opts}) do
-    # No SSL for now.
-    # {:ok, certfile} = Keyword.fetch(opts, :certfile)
-    # {:ok, keyfile} = Keyword.fetch(opts, :keyfile)
 
     # document me :)
     tcp_options = [
@@ -31,8 +22,27 @@ defmodule Http2 do
 
     {:ok, listen_socket} = :gen_tcp.listen(port, tcp_options)
 
+    spawn_link fn ->
+      acceptor(handler_module, listen_socket, supervisor)
+    end
+
+    {:ok, supervisor}
+  end
+
+  def acceptor(handler_module, listen_socket, supervisor) do
+    {:ok, conn} = :gen_tcp.accept(listen_socket)
+
+    {:ok, pid} = Supervisor.start_child(supervisor, [handler_module, conn])
+
+    # send incomming data to the new worker
+    :gen_tcp.controlling_process(conn, pid)
+
+    acceptor(handler_module, listen_socket, supervisor)
+  end
+
+  def init({port, opts}) do
     children = [
-      worker(Http2.Connection, [listen_socket], restart: :transient)
+      worker(Http2.Connection, [], restart: :transient)
     ]
 
     supervise(children, strategy: :simple_one_for_one, max_restarts: @max_connection_restarts)
