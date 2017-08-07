@@ -8,23 +8,31 @@ defmodule Http2.Connection do
 
   @max_hpack_table_size 1000
 
-  def start_link(handler_module, conn) do
-    GenServer.start_link(__MODULE__, {handler_module, conn}, [])
+  def start_link(:server, controlling_process, conn) do
+    start_link(:server, controlling_process, conn)
   end
 
-  def init({handler_module, conn}) do
+  def start_link(:client, controlling_process) do
+    {:ok, conn} = :gen_tcp.connect({127,0,0,1}, 8888, [:binary, {:active,false}])
+
+    start_link(:client, controlling_process, conn)
+  end
+
+  def start_link(connection_type, controlling_process, conn) do
+    GenServer.start_link(__MODULE__, {connection_type, controlling_process, conn}, [])
+  end
+
+  def init({connection_type, controlling_process, conn}) do
     :inet.setopts(conn, active: :once)
 
     {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
-
-    :ok = handler_module.init({})
 
     state = %{
       conn: conn,
       buffer: "",
       hpack_table: hpack_table,
-      handler_module: handler_module,
-      state_name: :handshake
+      state_name: :handshake,
+      controlling_process: controlling_process
     }
 
     IO.puts "Connection started"
