@@ -55,20 +55,70 @@ defmodule Http2.Integration.HelloWorldTest do
     :gen_tcp.close(conn)
   end
 
-  test "hello world test", context do
-    {:ok, conn} = Http2.Client.start_link(host: "localhost", port: 8888)
+  alias Http2.Connection
 
-    {:ok, response} = Http2.Client.request(conn, body: "", headers: [
+  test "hello world test", context do
+    {:ok, conn}   = Connection.start_link(:client, host: "localhost", port: 8888)
+    {:ok, stream} = Connection.create_stream(conn)
+
+    headers = [
       ":method": "GET",
       ":path": "/",
       ":scheme": "http",
       "user-agent": "elixir-http2-client/0.0.1"
-    ])
+    ]
 
-    assert response.headers == [{"content-type": "text/html"}]
-    assert response.body == "Hello World"
+    :ok = Connection.send_headers(conn, stream, headers: headers, end_stream: true)
 
-    Http2.Client.close(conn)
+    {:ok, body, headers} = wait_for_response(conn, stream)
+
+    IO.puts body
+    IO.puts headers
+
+    assert headers == [{"content-type": "text/html"}]
+    assert body == "Hello World"
+
+    Process.exit(conn, :kill)
+  end
+
+  def wait_for_response(conn, stream) do
+    case wait_for_headers(conn, stream) do
+      {:ok, headers, true} ->
+        {:ok, nil, headers}
+
+      {:ok, headers, false} ->
+        case wait_for_body(conn, stream) do
+          {:ok, body} ->
+            {:ok, body, headers}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def wait_for_headers(conn, stream) do
+    receive do
+      {^conn, ^stream, :headers, headers, end_stream} -> {:ok, headers, end_stream}
+    after
+      1000 -> {:error, :no_headers}
+    end
+  end
+
+  def wait_for_body(conn, stream, buffer \\ "") do
+    receive do
+      {^conn, ^stream, :body, body, end_stream} ->
+        if end_stream do
+          {:ok, body}
+        else
+          wait_for_body(conn, stream, buffer <> body)
+        end
+    after
+      1000 -> {:error, :no_body}
+    end
   end
 
 end
