@@ -47,9 +47,20 @@ defmodule Http2.Connection do
   #
 
   def init({:server, controlling_process, socket}) do
-    :inet.setopts(conn, active: :once)
+    :inet.setopts(socket, active: :once)
 
-    init({:client, controlling_process, socket})
+    {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
+
+    state = %__MODULE__{
+      type: :client,
+      buffer: "",
+      hpack_table: hpack_table,
+      state_name: :handshake,
+      controlling_process: controlling_process,
+      socket: socket
+    }
+
+    {:ok, state}
   end
 
   def init({:client, controlling_process, host, port}) do
@@ -57,24 +68,17 @@ defmodule Http2.Connection do
 
     {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
 
-    init({:client, controlling_process, socket})
-  end
-
-  def init({connection_type, controlling_process, socket}) do
-    {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
-
     state = %__MODULE__{
-      type: connection_type,
+      type: :client,
       buffer: "",
       hpack_table: hpack_table,
       state_name: :handshake,
-      controlling_process: controlling_process
+      controlling_process: controlling_process,
       socket: socket
     }
 
     {:ok, state}
   end
-
 
   # ########################################
   # Incomming tcp data

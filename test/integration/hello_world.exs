@@ -29,54 +29,56 @@ defmodule Http2.Integration.HelloWorldTest do
     {:ok, server: server}
   end
 
-  test "hello world test", context do
-    {:ok, conn} = :gen_tcp.connect({127,0,0,1}, 8888, [:binary, {:active,false}])
-    :timer.sleep(1000)
+#   test "hello world test", context do
+#     {:ok, conn} = :gen_tcp.connect({127,0,0,1}, 8888, [:binary, {:active,false}])
+#     :timer.sleep(1000)
 
-    IO.puts "Sending preface"
-    :gen_tcp.send(conn, "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
-    :timer.sleep(1000)
+#     IO.puts "Sending preface"
+#     :gen_tcp.send(conn, "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+#     :timer.sleep(1000)
 
-    {:ok, data} = :gen_tcp.recv(conn, 0)
-    assert data == <<0, 0, 0, 4, 0, 0, 0, 0, 0>>
+#     {:ok, data} = :gen_tcp.recv(conn, 0)
+#     assert data == <<0, 0, 0, 4, 0, 0, 0, 0, 0>>
 
-    IO.puts "Sending data frame"
-    :gen_tcp.send(conn, <<4::24, 0::8, 0::8, 0::1, 1::31>> <> "test")
-    :timer.sleep(1000)
+#     IO.puts "Sending data frame"
+#     :gen_tcp.send(conn, <<4::24, 0::8, 0::8, 0::1, 1::31>> <> "test")
+#     :timer.sleep(1000)
 
-    # expect headers
-    {:ok, payload} = :gen_tcp.recv(conn, 0)
+#     # expect headers
+#     {:ok, payload} = :gen_tcp.recv(conn, 0)
 
-    expected_headers = <<0, 0, 4, 1, 5, 0, 0, 0, 1, 116, 101, 115, 116>>
-    expected_data    = <<0, 0, 11, 0, 5, 0, 0, 0, 1>> <> "Hello World"
+#     expected_headers = <<0, 0, 4, 1, 5, 0, 0, 0, 1, 116, 101, 115, 116>>
+#     expected_data    = <<0, 0, 11, 0, 5, 0, 0, 0, 1>> <> "Hello World"
 
-    assert payload == expected_headers <> expected_data
+#     assert payload == expected_headers <> expected_data
 
-    :gen_tcp.close(conn)
-  end
+#     :gen_tcp.close(conn)
+#   end
 
   alias Http2.Connection
 
   test "hello world test", context do
-    {:ok, conn}   = Connection.start_link(:client, host: "localhost", port: 8888)
-    {:ok, stream} = Connection.create_stream(conn)
+    {:ok, conn} = Connection.start_link(:client, self(), 'localhost', 8888)
+    :timer.sleep(1000)
 
-    headers = [
-      ":method": "GET",
-      ":path": "/",
-      ":scheme": "http",
-      "user-agent": "elixir-http2-client/0.0.1"
-    ]
+    # {:ok, stream} = Connection.create_stream(conn)
 
-    :ok = Connection.send_headers(conn, stream, headers: headers, end_stream: true)
+    # headers = [
+    #   ":method": "GET",
+    #   ":path": "/",
+    #   ":scheme": "http",
+    #   "user-agent": "elixir-http2-client/0.0.1"
+    # ]
 
-    {:ok, body, headers} = wait_for_response(conn, stream)
+    # :ok = Connection.send_headers(conn, stream, headers: headers, end_stream: true)
 
-    IO.puts body
-    IO.puts headers
+    # {:ok, body, headers} = wait_for_response(conn, stream)
 
-    assert headers == [{"content-type": "text/html"}]
-    assert body == "Hello World"
+    # IO.puts body
+    # IO.puts headers
+
+    # assert headers == [{"content-type", "text/html"}]
+    # assert body == "Hello World"
 
     Process.exit(conn, :kill)
   end
