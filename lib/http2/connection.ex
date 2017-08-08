@@ -43,33 +43,28 @@ defmodule Http2.Connection do
 
 
   #
-  # Private gen_server interface.
+  # Gen server initialization.
   #
 
   def init({:server, controlling_process, socket}) do
     :inet.setopts(socket, active: :once)
 
-    {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
-
-    state = %__MODULE__{
-      type: :client,
-      buffer: "",
-      hpack_table: hpack_table,
-      state_name: :handshake,
-      controlling_process: controlling_process,
-      socket: socket
-    }
-
-    {:ok, state}
+    init_state(:client, controlling_process, socket)
   end
 
   def init({:client, controlling_process, host, port}) do
     {:ok, socket} = :gen_tcp.connect(host, port, [:binary, {:active,false}])
 
+    :ok = :gen_tcp.send(socket, @connection_preface)
+
+    init_state(:client, controlling_process, socket)
+  end
+
+  def init_state(type, controlling_process, socket) do
     {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
 
     state = %__MODULE__{
-      type: :client,
+      type: type,
       buffer: "",
       hpack_table: hpack_table,
       state_name: :handshake,
@@ -85,13 +80,15 @@ defmodule Http2.Connection do
   # ########################################
 
   def handle_info({:tcp, _port, data}, state) do
+    Logger.info "===> Incomming data #{inspect(data)}"
+
     if state.state_name == :shutdown do
       {:stop, :normal, state}
     else
       new_state = consume(data, state)
 
       if new_state.state_name != :shutdown do
-        :inet.setopts(new_state.conn, active: :once)
+        :inet.setopts(new_state.socket, active: :once)
 
         {:noreply, new_state}
       else
@@ -116,9 +113,9 @@ defmodule Http2.Connection do
   # ########################################
 
   def respond(data, state) do
-    Logger.info "<=== Sending back #{inspect(data)}"
+    Logger.info "<=== Sending data #{inspect(data)}"
 
-    :ok = :gen_tcp.send(state.conn, data)
+    :ok = :gen_tcp.send(state.socket, data)
   end
 
 
