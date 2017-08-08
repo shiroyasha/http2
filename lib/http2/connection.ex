@@ -57,6 +57,36 @@ defmodule Http2.Connection do
     GenServer.call(conn, :create_stream)
   end
 
+  #
+  # send_headers
+  #
+  # Sends headers to the remote server.
+  #
+  #  conn        - PID of the connection process
+  #  stream      - The stream where to send these headers.
+  #  headers     - Keyword arguments containing the headers. Example:
+  #
+  #                [
+  #                  {":method", "GET"},
+  #                  {"content-type", "application/json"},
+  #                  {":path", "/"}
+  #                ]
+  #
+  #  end_headers - Boolean value representing if this is the last
+  #                batch of headers sent to the remote server.
+  #
+  #  end_stream  - Boolean value representing if the connection
+  #                should be closed when the headers are sent.
+  #                If the request has no payload (i.e GET request)
+  #                the value should be true. Otherwise, if you
+  #                plan to send data frames to the remote host,
+  #                set end_stream to false.
+  #
+
+  def send_headers(conn, stream, headers, end_headers, end_stream) do
+    GenServer.call(conn, {:send_headers, stream, headers, end_headers, end_stream})
+  end
+
 
   #
   # Gen server initialization.
@@ -155,6 +185,36 @@ defmodule Http2.Connection do
     response = {:ok, stream_id}
 
     {:reply, response, new_state}
+  end
+
+  def handle_call({:send_headers, stream, headers, end_headers, end_stream}, _from, state) do
+    # TODO: extract encoding of the header to a module
+
+    payload = HPack.encode(headers, state.hpack_table)
+
+    flags = 0
+
+    if end_stream do
+      flags = flags + 1
+    end
+
+    if end_headers do
+      flags = flags + 4
+    end
+
+    header = %Http2.Frame{
+      len: byte_size(payload),
+      type: :header,
+      flags: flags,
+      stream_id: stream,
+      payload: payload
+    }
+
+    respond(Http2.Frame.serialize(header), state)
+
+    response = {:ok, stream}
+
+    {:reply, response, state}
   end
 
 
