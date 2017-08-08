@@ -58,19 +58,19 @@ defmodule Http2.Integration.HelloWorldTest do
   alias Http2.Connection
 
   test "hello world test", context do
-    {:ok, conn} = Connection.start_link(:client, self(), 'localhost', 8888)
+    {:ok, conn}   = Connection.start_link(:client, self(), 'localhost', 8888)
     {:ok, stream} = Connection.create_stream(conn)
 
     IO.puts "Stream id: #{stream}"
 
-    # headers = [
-    #   ":method": "GET",
-    #   ":path": "/",
-    #   ":scheme": "http",
-    #   "user-agent": "elixir-http2-client/0.0.1"
-    # ]
+    headers = [
+      {":method", "GET"},
+      {":path", "/"},
+      {":scheme", "http"},
+      {"user-agent", "elixir-http2-client/0.0.1"}
+    ]
 
-    # :ok = Connection.send_headers(conn, stream, headers: headers, end_stream: true)
+    {:ok, stream} = Connection.send_headers(conn, stream, headers, true, true)
 
     # {:ok, body, headers} = wait_for_response(conn, stream)
 
