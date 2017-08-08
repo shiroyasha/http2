@@ -8,7 +8,8 @@ defmodule Http2.Connection do
             hpack_table: nil,         # Pid of the HPack.Table used for encoding/decoding headers.
             state_name: :handshake,   # Current state of the connection. One of (:handshake, :connected, :continuation, :shutdown).
             controlling_process: nil, # Pid of the controlling process. Every incomming frame is sent to this process.
-            socket: nil               # TCP or SSL socket.
+            socket: nil,              # TCP or SSL socket.
+            next_stream_id: 0         # ID for the next opened stream
 
 
   # Default connection "fast-fail" preamble string as defined by the spec.
@@ -41,6 +42,21 @@ defmodule Http2.Connection do
     GenServer.start_link(__MODULE__, {:client, controlling_process, host, port}, [])
   end
 
+  #
+  # create_stream
+  #
+  # Create a new stream for sending data. This action is usually used
+  # by the client to initialize a new stream id.
+  #
+  # This method sends a sync message to the server.
+  #
+  # The answer is {:ok, stream_id}
+  #
+
+  def create_stream(conn) do
+    GenServer.call(conn, :create_stream)
+  end
+
 
   #
   # Gen server initialization.
@@ -49,18 +65,25 @@ defmodule Http2.Connection do
   def init({:server, controlling_process, socket}) do
     :inet.setopts(socket, active: :once)
 
-    init_state(:client, controlling_process, socket)
+    # server MUST use even numbers
+    initial_stream_id = 2
+
+    init_state(:client, controlling_process, socket, initial_stream_id)
   end
 
   def init({:client, controlling_process, host, port}) do
     {:ok, socket} = :gen_tcp.connect(host, port, [:binary, {:active,false}])
 
+    # client MUST send a connection preface when connecting
     :ok = :gen_tcp.send(socket, @connection_preface)
 
-    init_state(:client, controlling_process, socket)
+    # client MUST use odd numbers
+    initial_stream_id = 1
+
+    init_state(:client, controlling_process, socket, initial_stream_id)
   end
 
-  def init_state(type, controlling_process, socket) do
+  def init_state(type, controlling_process, socket, initial_stream_id) do
     {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
 
     state = %__MODULE__{
@@ -69,7 +92,8 @@ defmodule Http2.Connection do
       hpack_table: hpack_table,
       state_name: :handshake,
       controlling_process: controlling_process,
-      socket: socket
+      socket: socket,
+      next_stream_id: initial_stream_id
     }
 
     {:ok, state}
@@ -116,6 +140,21 @@ defmodule Http2.Connection do
     Logger.info "<=== Sending data #{inspect(data)}"
 
     :ok = :gen_tcp.send(state.socket, data)
+  end
+
+  def handle_call(:create_stream, _from, state) do
+    # TODO: make this creation more advanced
+    #  - create dedicated module
+    #  - start a new process for a stream
+    #  - return a struct with: stream_id, stream_pid, conn_pid
+
+    stream_id = state.next_stream_id
+
+    new_state = %{ state | next_stream_id: stream_id + 2 }
+
+    response = {:ok, stream_id}
+
+    {:reply, response, new_state}
   end
 
 

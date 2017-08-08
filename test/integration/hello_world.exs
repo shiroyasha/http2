@@ -59,9 +59,9 @@ defmodule Http2.Integration.HelloWorldTest do
 
   test "hello world test", context do
     {:ok, conn} = Connection.start_link(:client, self(), 'localhost', 8888)
-    :timer.sleep(1000)
+    {:ok, stream} = Connection.create_stream(conn)
 
-    # {:ok, stream} = Connection.create_stream(conn)
+    IO.puts "Stream id: #{stream}"
 
     # headers = [
     #   ":method": "GET",
