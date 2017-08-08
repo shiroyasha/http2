@@ -3,39 +3,74 @@ defmodule Http2.Connection do
   require Logger
   alias Http2.Frame
 
-  # Default connection "fast-fail" preamble string as defined by the spec.
-  @connection_preface "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+  defstruct type: nil,                # Connection type - :server or :client.
+            buffer: "",               # Buffer for incomming bytes.
+            hpack_table: nil,         # Pid of the HPack.Table used for encoding/decoding headers.
+            state_name: :handshake,   # Current state of the connection. One of (:handshake, :connected, :continuation, :shutdown).
+            controlling_process: nil, # Pid of the controlling process. Every incomming frame is sent to this process.
+            socket: nil               # TCP or SSL socket.
 
+
+  # Default connection "fast-fail" preamble string as defined by the spec.
+  @connection_preface   "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
+  # maximum size of the hpack table
   @max_hpack_table_size 1000
 
-  def start_link(:server, controlling_process, conn) do
-    start_link(:server, controlling_process, conn)
+
+  #
+  # start_link
+  #
+  # A connection can be started for either a server or a client.
+  #
+  # For server connections, you need to pass:
+  #  - controlling_process - PID of the process that will receive frames
+  #  - socket - a socket that was connected to either tcp or ssl
+  #
+  # For client connections, you need to pass:
+  #  - controlling_process - PID of the process that will receive frames
+  #  - host - hostname of the remote server
+  #  - port - port of the remote server
+  #
+
+  def start_link(:server, controlling_process, socket) do
+    GenServer.start_link(__MODULE__, {:server, controlling_process, socket}, [])
   end
 
-  def start_link(:client, controlling_process) do
-    {:ok, conn} = :gen_tcp.connect({127,0,0,1}, 8888, [:binary, {:active,false}])
-
-    start_link(:client, controlling_process, conn)
+  def start_link(:client, controlling_process, host, port) do
+    GenServer.start_link(__MODULE__, {:client, controlling_process, host, port}, [])
   end
 
-  def start_link(connection_type, controlling_process, conn) do
-    GenServer.start_link(__MODULE__, {connection_type, controlling_process, conn}, [])
-  end
 
-  def init({connection_type, controlling_process, conn}) do
+  #
+  # Private gen_server interface.
+  #
+
+  def init({:server, controlling_process, socket}) do
     :inet.setopts(conn, active: :once)
+
+    init({:client, controlling_process, socket})
+  end
+
+  def init({:client, controlling_process, host, port}) do
+    {:ok, socket} = :gen_tcp.connect(host, port, [:binary, {:active,false}])
 
     {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
 
-    state = %{
-      conn: conn,
+    init({:client, controlling_process, socket})
+  end
+
+  def init({connection_type, controlling_process, socket}) do
+    {:ok, hpack_table} = HPack.Table.start_link(@max_hpack_table_size)
+
+    state = %__MODULE__{
+      type: connection_type,
       buffer: "",
       hpack_table: hpack_table,
       state_name: :handshake,
       controlling_process: controlling_process
+      socket: socket
     }
-
-    IO.puts "Connection started"
 
     {:ok, state}
   end
